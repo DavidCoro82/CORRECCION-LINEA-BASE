@@ -1,0 +1,98 @@
+#CORRECION DE LINEA BASE DE UN ACELEROGRAMA
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import cumtrapz
+
+def baseline_correction(acceleration, time, order=2):
+    """
+    Realiza la corrección de línea base en un acelerograma.
+
+    Parámetros:
+    - acceleration: numpy array, aceleración del acelerograma
+    - time: numpy array, tiempo correspondiente a cada punto de aceleración|
+    - order: int, orden del polinomio para el ajuste de línea base (1 es lineal)
+
+    Devuelve:
+    - acceleration_corrected: numpy array, aceleración corregida
+    """
+
+    # Integración para obtener velocidad
+    velocity = cumtrapz(acceleration, time, initial=0)
+    
+    # Integración para obtener desplazamiento
+    displacement = cumtrapz(velocity, time, initial=0)
+    
+    # Ajuste polinomial a los datos de desplazamiento
+    coeffs = np.polyfit(time, displacement, order)
+    trend = np.polyval(coeffs, time)
+    
+    # Remover la tendencia del desplazamiento para obtener el desplazamiento corregido
+    displacement_corrected = displacement - trend
+    
+    # Derivación para obtener velocidad corregida
+    velocity_corrected = np.gradient(displacement_corrected, time)
+    
+    # Derivación para obtener aceleración corregida
+    acceleration_corrected = np.gradient(velocity_corrected, time)
+
+    return acceleration_corrected
+
+def load_accelerogram_from_file(file_path):
+    """
+    Carga los datos de un acelerograma desde un archivo de texto.
+
+    Parámetros:
+    - file_path: str, ruta del archivo de texto
+
+    Devuelve:
+    - time: numpy array, tiempo
+    - acceleration: numpy array, aceleración
+    """
+    data = np.loadtxt(file_path)
+    time = data[:, 0]
+    acceleration = data[:, 1]
+    return time, acceleration
+
+def save_corrected_data_to_file(file_path, time, acceleration_corrected):
+    """
+    Guarda los datos corregidos en un archivo de texto.
+
+    Parámetros:
+    - file_path: str, ruta del archivo de texto para guardar los datos
+    - time: numpy array, tiempo
+    - acceleration_corrected: numpy array, aceleración corregida
+    """
+    corrected_data = np.column_stack((time, acceleration_corrected))
+    np.savetxt(file_path, corrected_data, header='Time(s) Acceleration(m/s²)', comments='')
+
+# Ejemplo de uso
+if __name__ == "__main__":
+    # Ruta al archivo de texto con los datos del acelerograma
+    file_path = 'C:/LAVORO DAVID/UPN/UPN 2024-01/INGENIERIA SISMORRESISTENTE/CORRECION ACELEROGRAMAS PYTHON/ACELEROGRAMAS/SISMO 1966 0.01.txt'  # Cambia esto a la ruta de tu archivo
+
+    # Cargar el acelerograma desde el archivo
+    time, acceleration = load_accelerogram_from_file(file_path)
+
+    # Corrección de línea base
+    acceleration_corrected = baseline_correction(acceleration, time, order=1)
+
+    # Guardar los datos corregidos en un archivo de texto
+    output_file_path = 'C:/LAVORO DAVID/UPN/UPN 2024-01/INGENIERIA SISMORRESISTENTE/CORRECION ACELEROGRAMAS PYTHON//acelerograma_corregido.txt'  # Cambia esto a la ruta donde deseas guardar el archivo
+    save_corrected_data_to_file(output_file_path, time, acceleration_corrected)
+
+    # Gráficas
+    plt.figure(figsize=(12, 6))
+    plt.subplot(2, 1, 1)
+    plt.plot(time, acceleration, label='Original')
+    plt.title('Acelerograma Original y Corregido')
+    plt.ylabel('Aceleración (m/s²)')
+    plt.legend()
+
+    plt.subplot(2, 1, 2)
+    plt.plot(time, acceleration_corrected, label='Corregido', color='red')
+    plt.xlabel('Tiempo (s)')
+    plt.ylabel('Aceleración (m/s²)')
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.show()
